@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -13,7 +14,7 @@ from transformers import AutoConfig, AutoTokenizer
 
 MASK_ID = 126336
 DEFAULT_RESEARCH_ROOT = os.environ.get(
-    "RESEARCH_ROOT", "/data/home/martellato41/research"
+    "RESEARCH_ROOT", str(Path(__file__).resolve().parents[7])
 )
 
 

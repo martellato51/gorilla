@@ -13,13 +13,12 @@ than in the top-level DiffuAgent repository.
 ## Repository Layout
 
 ```bash
-git clone git@github.com:martellato51/DiffuAgent.git
-cd DiffuAgent
-mkdir -p unified_envs
-cd unified_envs
-git clone --branch diffuagent-bfcl git@github.com:martellato51/gorilla.git
-cd gorilla/berkeley-function-call-leaderboard
+git clone --branch my-change --recurse-submodules git@github.com:martellato51/DiffuAgent.git
+cd DiffuAgent/unified_envs/gorilla/berkeley-function-call-leaderboard
 ```
+
+If the server does not have a GitHub SSH key, configure SSH first or replace the
+clone/submodule URLs with URLs that the server can authenticate against.
 
 Expected remotes inside `unified_envs/gorilla`:
 
@@ -28,9 +27,11 @@ origin   git@github.com:martellato51/gorilla.git
 upstream https://github.com/ShishirPatil/gorilla
 ```
 
-The branch to use is:
+Submodules are pinned to a commit. If you need to edit Gorilla files, checkout
+the working branch inside the submodule:
 
 ```bash
+cd /path/to/DiffuAgent/unified_envs/gorilla
 git checkout diffuagent-bfcl
 ```
 
@@ -56,6 +57,7 @@ Important environment variables:
 
 ```bash
 export BFCL_ROOT=/path/to/DiffuAgent/unified_envs/gorilla/berkeley-function-call-leaderboard
+export RESEARCH_ROOT=/path/to/research
 export QWEN_MODEL_PATH=/path/to/model/Qwen3-8B
 export LLADA_MODEL_PATH=/path/to/model/LLaDA-8B-Instruct
 export FAST_DLLM_LLADA_PATH=/path/to/Fast-dLLM/v1/llada
@@ -63,33 +65,30 @@ export FAST_DLLM_LLADA_PATH=/path/to/Fast-dLLM/v1/llada
 
 ## Environment Setup
 
-Portable Slurm template:
+Portable Slurm template. This creates or updates two conda environments, matching
+the setup that has been used successfully on the current server:
+
+- `qwen3`: Qwen3-8B + vLLM/OpenAI-compatible serving.
+- `llada8b`: LLaDA-8B-Instruct + Fast-dLLM v1 local inference.
 
 ```bash
 cd "$BFCL_ROOT"
 sbatch jobs/setup_bfcl_env.sbatch
 ```
 
-On the current server, the latest successful local setup instead uses the
-shared `qwen3` and `llada8b` conda environments plus:
+Override env names if needed:
 
 ```bash
-cd /data/home/martellato41/research
-sbatch setup_bfcl.job
+QWEN_ENV_NAME=my_qwen_env LLADA_ENV_NAME=my_llada_env sbatch jobs/setup_bfcl_env.sbatch
 ```
 
-That local job installs BFCL editable, installs optional vLLM dependencies when
-requested, installs Fast-dLLM v1 requirements, and runs `register_backbone.py`.
+The setup job installs BFCL editable in both environments, installs vLLM extras
+for `qwen3`, installs Fast-dLLM v1 requirements for `llada8b`, and runs
+`register_backbone.py` in both.
 
 ## Model Registration
 
-For the backbone experiments, the required registration script is:
-
-```bash
-python register_backbone.py
-```
-
-It registers:
+For the backbone experiments, `register_backbone.py` registers:
 
 ```text
 backbone/qwen3-8b -> LLMHandler
@@ -106,17 +105,18 @@ Portable tracked template:
 
 ```bash
 cd "$BFCL_ROOT"
-TEST_CATEGORY=simple_python sbatch jobs/run_backbone_eval.sbatch
+TEST_CATEGORIES=simple_python sbatch jobs/run_backbone_eval.sbatch
 ```
 
-Current server jobs:
+This job starts Qwen3-8B through vLLM in the `qwen3` env, evaluates
+`backbone/qwen3-8b`, then switches to the `llada8b` env and evaluates
+`backbone/llada` against the same BFCL subset.
 
 ```bash
-cd /data/home/martellato41/research
-
-sbatch run_bfcl_backbone.job    # Qwen3-8B then LLaDA-8B
-sbatch run_bfcl_llada.job       # LLaDA-only
-sbatch run_bfcl_qwen3.job       # Qwen-only, expects vLLM endpoint
+QWEN_ENV_NAME=my_qwen_env \
+LLADA_ENV_NAME=my_llada_env \
+TEST_CATEGORIES=simple_python,multiple \
+sbatch jobs/run_backbone_eval.sbatch
 ```
 
 Detailed notes are in `README_BFCL_BACKBONE.md`.

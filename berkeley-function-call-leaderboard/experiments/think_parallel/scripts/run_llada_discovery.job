@@ -7,13 +7,14 @@
 #SBATCH --gres=gpu:2
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --output=/data/home/martellato41/bfcl_think_parallel.%j.log
-#SBATCH --error=/data/home/martellato41/bfcl_think_parallel.%j.log
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
 
 set -euo pipefail
 
-RESEARCH_ROOT="${RESEARCH_ROOT:-/data/home/martellato41/research}"
-BFCL_ROOT="${BFCL_ROOT:-${RESEARCH_ROOT}/DiffuAgent/unified_envs/gorilla/berkeley-function-call-leaderboard}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BFCL_ROOT="${BFCL_ROOT:-$(cd "${SCRIPT_DIR}/../../.." && pwd)}"
+RESEARCH_ROOT="${RESEARCH_ROOT:-$(cd "${BFCL_ROOT}/../../../.." && pwd)}"
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate llada8b
