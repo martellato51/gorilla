@@ -23,7 +23,7 @@ git status --branch --short
 git -C unified_envs/gorilla status --branch --short
 ```
 
-현재 서버에서 성공한 최신 job은 `/data/home/martellato41/research/run_bfcl_*.job`
+현재 서버에서 성공한 최신 job은 `/data/home/martellato41/research/jobs_bfcl/run_bfcl_*.job`
 쪽이며, portable template은 이 repo의 `jobs/` 아래에 있습니다.
 
 평가 대상 backbone은 두 개입니다.

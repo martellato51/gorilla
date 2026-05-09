@@ -121,6 +121,10 @@ sbatch jobs/run_backbone_eval.sbatch
 
 Detailed notes are in `README_BFCL_BACKBONE.md`.
 
+On the current server, older hand-tuned Slurm jobs are kept outside this repo in
+`/data/home/martellato41/research/jobs_bfcl/`. They are local records; use
+`jobs/*.sbatch` in this repo as the portable starting point.
+
 ## Output Hygiene
 
 Generated outputs are intentionally ignored by git:
