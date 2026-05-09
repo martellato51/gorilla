@@ -44,3 +44,18 @@ berkeley-function-call-leaderboard/**/*.lock
 
 # Ignore the wandb cache:
 **/wandb/
+
+################## Local DiffuAgent BFCL outputs ##############################
+
+berkeley-function-call-leaderboard/logs/
+berkeley-function-call-leaderboard/logger/
+berkeley-function-call-leaderboard/result_runs/
+berkeley-function-call-leaderboard/subset/
+berkeley-function-call-leaderboard/subset_runs/
+berkeley-function-call-leaderboard/experiments/**/outputs/
+
+# Registration/debug scratch files
+*.backup.*
+*.backup
+*.bak
+*.patch

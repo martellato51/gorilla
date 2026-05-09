@@ -1,6 +1,8 @@
-# Installation Guide for Berkeley Function Call Leaderboard (BFCL)
+# Installation Guide for DiffuAgent BFCL Backbone Evaluation
 
-This guide provides step-by-step instructions for setting up BFCL in the unified environment with sparse checkout.
+This guide documents the reproducible BFCL v4 setup used for DiffuAgent
+backbone evaluation. The maintained code lives in a Gorilla fork branch rather
+than in the top-level DiffuAgent repository.
 
 ## Prerequisites
 
@@ -8,150 +10,128 @@ This guide provides step-by-step instructions for setting up BFCL in the unified
 - Python 3.10+
 - No pip installation required (code-only setup)
 
-## Step 1: Clone this repository
+## Repository Layout
 
 ```bash
-git clone git@github.com:Coldmist-Lu/DiffuAgent.git
+git clone git@github.com:martellato51/DiffuAgent.git
 cd DiffuAgent
-```
-
-## Step 2: Create unified_envs working directory
-
-```bash
 mkdir -p unified_envs
 cd unified_envs
+git clone --branch diffuagent-bfcl git@github.com:martellato51/gorilla.git
+cd gorilla/berkeley-function-call-leaderboard
 ```
 
-## Step 3: Sparse checkout BFCL (berkeley-function-call-leaderboard folder only)
-
-Using modern sparse checkout method to download only the `berkeley-function-call-leaderboard` folder from the Gorilla repository:
+Expected remotes inside `unified_envs/gorilla`:
 
 ```bash
-# Clone with sparse filter (partial clone)
-git clone --depth 1 --filter=blob:none --sparse https://github.com/ShishirPatil/gorilla.git
-cd gorilla
-
-# Set sparse checkout to only include berkeley-function-call-leaderboard folder
-git sparse-checkout set berkeley-function-call-leaderboard
+origin   git@github.com:martellato51/gorilla.git
+upstream https://github.com/ShishirPatil/gorilla
 ```
 
-This downloads only the `berkeley-function-call-leaderboard` folder (~15MB) instead of the full repository.
-
-## Step 4: Merge with DiffuAgent BFCL code
-
-DiffuAgent provides custom BFCL enhancements including 52 model configurations and custom handlers. Merge these enhancements:
+The branch to use is:
 
 ```bash
-# Go back to gorilla directory (current directory should be unified_envs/gorilla/)
-pwd  # Should be /path/to/DiffuAgent/unified_envs/gorilla
-
-# Simple one-command merge: copy all DiffuAgent BFCL code
-cp -r ../../DiffuAgent/BFCL/* ./berkeley-function-call-leaderboard/
+git checkout diffuagent-bfcl
 ```
 
-This will merge:
-- Custom model handlers (DiffuAgent base, mixins, handlers)
-- 52 model configurations (LLM + DLLM variants)
-- Utility functions (LLM/DLLM request tools)
-- Test scripts
-- Configuration patches
-- DEBUG logging utilities
+This branch already contains the DiffuAgent BFCL additions. Do not copy files
+from the older `DiffuAgent/BFCL` tree on top of it.
 
-## Step 5: Register DiffuAgent Models (Required)
+## External Checkouts and Models
 
-**IMPORTANT**: After merging the code, you must register DiffuAgent models in BFCL's model configuration. This step adds the 52 DiffuAgent model configurations to BFCL's MODEL_CONFIG_MAPPING.
+Prepare these sibling paths:
+
+```text
+research/
+├── DiffuAgent/
+│   └── unified_envs/gorilla/berkeley-function-call-leaderboard/
+├── Fast-dLLM/
+│   └── v1/llada/
+└── model/
+    ├── Qwen3-8B/
+    └── LLaDA-8B-Instruct/
+```
+
+Important environment variables:
 
 ```bash
-# Change to BFCL directory
-cd /path/to/unified_envs/gorilla/berkeley-function-call-leaderboard
-
-# Run the registration script
-python3 register_diffuagent.py
+export BFCL_ROOT=/path/to/DiffuAgent/unified_envs/gorilla/berkeley-function-call-leaderboard
+export QWEN_MODEL_PATH=/path/to/model/Qwen3-8B
+export LLADA_MODEL_PATH=/path/to/model/LLaDA-8B-Instruct
+export FAST_DLLM_LLADA_PATH=/path/to/Fast-dLLM/v1/llada
 ```
 
-**Expected Output**:
-```
-============================================================
-Registering DiffuAgent Models
-============================================================
+## Environment Setup
 
-✓ Found bfcl_eval/constants/model_config.py
-
-[Step 1] Backing up original file...
-✓ Backed up to: bfcl_eval/constants/model_config.py.backup.20250127_XXXXXX
-
-[Step 2] Adding DiffuAgent registration...
-  Found MODEL_CONFIG_MAPPING at line XXX
-✓ Added Diffuagent registration
-
-[Step 3] Verifying installation...
-✓ Found 52 DiffuAgent models
-
-Sample models:
-  - diffuagent-chatbase/ministral-8b -> LLMHandler
-  - diffuagent-chatbase/qwen3-8b -> LLMHandler
-  - diffuagent-selector-chatbase/ministral-8b -> SelectorLLMHandler
-  - diffuagent-editor-chatbase/qwen3-8b -> EditorLLMHandler
-  - diffuagent-selector-editor-chatbase/ministral-8b -> SelectorEditorLLMHandler
-  ... and 47 more
-
-============================================================
-✓ Installation Successful!
-============================================================
-
-You can now run:
-  bfcl generate --model diffuagent-chatbase/qwen3-8b ...
-
-To undo: mv bfcl_eval/constants/model_config.py.backup.XXXXXX bfcl_eval/constants/model_config.py
-```
-
-### What This Step Does
-
-The registration script modifies `bfcl_eval/constants/model_config.py` to:
-
-1. **Import DiffuAgent configuration builder**:
-   ```python
-   from bfcl_eval.build_handlers_diffuagent import add_diffuagent_model_configs
-   ```
-
-2. **Generate model configurations**:
-   ```python
-   diffuagent_model_map = add_diffuagent_model_configs()
-   ```
-
-3. **Merge into BFCL's model mapping**:
-   ```python
-   MODEL_CONFIG_MAPPING = {
-       **diffuagent_model_map,  # ← Adds 52 DiffuAgent models
-       **api_inference_model_map,
-       **local_inference_model_map,
-       **third_party_inference_model_map,
-   }
-   ```
-
-## Running BFCL Evaluations
-
-After setup, use the provided test script to run DiffuAgent evaluations:
-
-### Quick Test
+Portable Slurm template:
 
 ```bash
-# From the DiffuAgent repository
-cd /path/to/DiffuAgent/DiffuAgent/BFCL
-
-# Run the test script (uses test_case_ids_to_generate.json)
-bash tests/test_run_ids.sh
+cd "$BFCL_ROOT"
+sbatch jobs/setup_bfcl_env.sbatch
 ```
 
-The test script will:
-1. Generate responses for test cases specified in `test_case_ids_to_generate.json`
-2. Save results to the BFCL results directory
+On the current server, the latest successful local setup instead uses the
+shared `qwen3` and `llada8b` conda environments plus:
 
-### Customizing the Test
+```bash
+cd /data/home/martellato41/research
+sbatch setup_bfcl.job
+```
 
-Edit `tests/test_run_ids.sh` to configure:
+That local job installs BFCL editable, installs optional vLLM dependencies when
+requested, installs Fast-dLLM v1 requirements, and runs `register_backbone.py`.
 
-- **BFCL_PROJECT_ROOT**: Path to berkeley-function-call-leaderboard
-- **MODEL_PATH**: Path to your model
-- **MODEL_NAME**: Model identifier for BFCL
-- **API keys and URLs**: Main agent and features backend endpoints
+## Model Registration
+
+For the backbone experiments, the required registration script is:
+
+```bash
+python register_backbone.py
+```
+
+It registers:
+
+```text
+backbone/qwen3-8b -> LLMHandler
+backbone/llada    -> LocalDLLMHandler
+```
+
+`register_diffuagent.py` is only needed for the full selector/editor model
+matrix. It is not required for pure backbone comparisons and may import extra
+optional dependencies.
+
+## Running Backbone Evaluation
+
+Portable tracked template:
+
+```bash
+cd "$BFCL_ROOT"
+TEST_CATEGORY=simple_python sbatch jobs/run_backbone_eval.sbatch
+```
+
+Current server jobs:
+
+```bash
+cd /data/home/martellato41/research
+
+sbatch run_bfcl_backbone.job    # Qwen3-8B then LLaDA-8B
+sbatch run_bfcl_llada.job       # LLaDA-only
+sbatch run_bfcl_qwen3.job       # Qwen-only, expects vLLM endpoint
+```
+
+Detailed notes are in `README_BFCL_BACKBONE.md`.
+
+## Output Hygiene
+
+Generated outputs are intentionally ignored by git:
+
+```text
+logs/
+logger/
+result/
+score/
+result_runs/
+subset/
+subset_runs/
+experiments/**/outputs/
+```

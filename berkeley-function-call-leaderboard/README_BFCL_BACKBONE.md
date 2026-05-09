@@ -2,6 +2,30 @@
 
 이 문서는 기존 BFCL README와 독립적인 로컬 실행 기록입니다. 현재 세팅은 BFCL v4에서 DiffuAgent의 Selector/Editor 같은 부가 모듈 없이 순수 backbone만 평가하기 위한 구성입니다.
 
+## 현재 git 상태 요약
+
+이 BFCL 작업은 상위 `DiffuAgent` repo 안에 있지만 별도 git repository입니다.
+
+```text
+DiffuAgent/unified_envs/gorilla
+├── origin   git@github.com:martellato51/gorilla.git
+├── upstream https://github.com/ShishirPatil/gorilla
+└── branch   diffuagent-bfcl
+```
+
+`diffuagent-bfcl` 브랜치는 BFCL upstream v4 위에 DiffuAgent backbone handler와
+재현용 job/script를 얹은 fork branch입니다. 상위 `DiffuAgent` repo는
+`unified_envs/`를 ignore하므로, VS Code의 publish 상태는 상위 repo와 이 nested
+Gorilla repo를 따로 확인해야 합니다.
+
+```bash
+git status --branch --short
+git -C unified_envs/gorilla status --branch --short
+```
+
+현재 서버에서 성공한 최신 job은 `/data/home/martellato41/research/run_bfcl_*.job`
+쪽이며, portable template은 이 repo의 `jobs/` 아래에 있습니다.
+
 평가 대상 backbone은 두 개입니다.
 
 - `backbone/qwen3-8b`: Qwen3-8B를 vLLM OpenAI-compatible 서버로 띄워서 평가

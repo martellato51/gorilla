@@ -1,0 +1,86 @@
+#!/bin/bash
+#SBATCH --job-name=bfcl_think_parallel
+#SBATCH --partition=jobs
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:2
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=/data/home/martellato41/bfcl_think_parallel.%j.log
+#SBATCH --error=/data/home/martellato41/bfcl_think_parallel.%j.log
+
+set -euo pipefail
+
+RESEARCH_ROOT="${RESEARCH_ROOT:-/data/home/martellato41/research}"
+BFCL_ROOT="${BFCL_ROOT:-${RESEARCH_ROOT}/DiffuAgent/unified_envs/gorilla/berkeley-function-call-leaderboard}"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate llada8b
+hash -r
+PYTHON="${PYTHON:-${HOME}/.conda/envs/llada8b/bin/python}"
+
+if [[ -n "${GPUS:-}" ]]; then
+  export CUDA_VISIBLE_DEVICES="$GPUS"
+fi
+
+export TOKENIZERS_PARALLELISM=false
+export PYTHONUNBUFFERED=1
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+export LLADA_MODEL_PATH="${LLADA_MODEL_PATH:-${RESEARCH_ROOT}/model/LLaDA-8B-Instruct}"
+export FAST_DLLM_LLADA_PATH="${FAST_DLLM_LLADA_PATH:-${RESEARCH_ROOT}/Fast-dLLM/v1/llada}"
+export LLADA_TEMPERATURE="${LLADA_TEMPERATURE:-0.0}"
+export LLADA_GEN_LENGTH="${LLADA_GEN_LENGTH:-256}"
+export LLADA_STEPS="${LLADA_STEPS:-128}"
+export LLADA_BLOCK_LENGTH="${LLADA_BLOCK_LENGTH:-32}"
+export LLADA_THRESHOLD="${LLADA_THRESHOLD:-null}"
+export LLADA_OOM_GEN_LENGTH="${LLADA_OOM_GEN_LENGTH:-128}"
+export LLADA_OOM_STEPS="${LLADA_OOM_STEPS:-64}"
+export LLADA_OOM_BLOCK_LENGTH="${LLADA_OOM_BLOCK_LENGTH:-32}"
+export LLADA_CONTEXT_LENGTH="${LLADA_CONTEXT_LENGTH:-4000}"
+export LLADA_ENFORCE_CONTEXT="${LLADA_ENFORCE_CONTEXT:-0}"
+export LLADA_TRUNCATE_INPUT="${LLADA_TRUNCATE_INPUT:-0}"
+export BFCL_PROJECT_ROOT="$BFCL_ROOT"
+
+IDS="${IDS:-multi_turn_base_46}"
+MODE="${MODE:-both}"
+CATEGORY="${CATEGORY:-multi_turn_base}"
+GRAPHS="${GRAPHS:-${RESEARCH_ROOT}/ParallelAgent/data/annotations/bfcl_graphs.jsonl}"
+EDGES="${EDGES:-${RESEARCH_ROOT}/ParallelAgent/data/annotations/bfcl_edges.jsonl}"
+RUN_NAME="${RUN_NAME:-llada_think_parallel_${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}"
+OUTPUT_DIR="${OUTPUT_DIR:-${BFCL_ROOT}/experiments/think_parallel/outputs/${RUN_NAME}}"
+
+echo "Start: $(date)"
+echo "BFCL_ROOT: $BFCL_ROOT"
+echo "LLADA_MODEL_PATH: $LLADA_MODEL_PATH"
+echo "FAST_DLLM_LLADA_PATH: $FAST_DLLM_LLADA_PATH"
+echo "LLADA_GEN_LENGTH: $LLADA_GEN_LENGTH"
+echo "LLADA_STEPS: $LLADA_STEPS"
+echo "LLADA_BLOCK_LENGTH: $LLADA_BLOCK_LENGTH"
+echo "LLADA_OOM_GEN_LENGTH: $LLADA_OOM_GEN_LENGTH"
+echo "LLADA_OOM_STEPS: $LLADA_OOM_STEPS"
+echo "LLADA_CONTEXT_LENGTH: $LLADA_CONTEXT_LENGTH"
+echo "LLADA_ENFORCE_CONTEXT: $LLADA_ENFORCE_CONTEXT"
+echo "LLADA_TRUNCATE_INPUT: $LLADA_TRUNCATE_INPUT"
+echo "CATEGORY: $CATEGORY"
+echo "IDS: $IDS"
+echo "MODE: $MODE"
+echo "GRAPHS: $GRAPHS"
+echo "EDGES: $EDGES"
+echo "OUTPUT_DIR: $OUTPUT_DIR"
+echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-<unset>}"
+
+cd "$BFCL_ROOT"
+
+"$PYTHON" experiments/think_parallel/src/run_discovery.py \
+  --bfcl-root "$BFCL_ROOT" \
+  --category "$CATEGORY" \
+  --ids "$IDS" \
+  --mode "$MODE" \
+  --graphs "$GRAPHS" \
+  --edges "$EDGES" \
+  --output-dir "$OUTPUT_DIR"
+
+echo "Done: $(date)"
+echo "Output directory: $OUTPUT_DIR"
+echo "Summary: $OUTPUT_DIR/summary.md"
