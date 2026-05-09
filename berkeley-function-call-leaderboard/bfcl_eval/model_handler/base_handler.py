@@ -254,6 +254,8 @@ class BaseHandler:
                 }
                 if reasoning_content:
                     log_entry["reasoning_content"] = reasoning_content
+                if "raw_response" in model_response_data:
+                    log_entry["raw_response"] = model_response_data["raw_response"]
 
                 current_step_inference_log.append(log_entry)
 
@@ -545,6 +547,8 @@ class BaseHandler:
                 }
                 if reasoning_content:
                     log_entry["reasoning_content"] = reasoning_content
+                if "raw_response" in model_response_data:
+                    log_entry["raw_response"] = model_response_data["raw_response"]
 
                 current_step_inference_log.append(log_entry)
 
