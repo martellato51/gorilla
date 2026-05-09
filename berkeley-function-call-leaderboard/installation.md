@@ -65,6 +65,22 @@ export FAST_DLLM_LLADA_PATH=/path/to/Fast-dLLM/v1/llada
 
 ## Environment Setup
 
+If this BFCL checkout was obtained through the wrapper DiffuAgent repository,
+the conda yml files are available at:
+
+```text
+../../../envs/qwen3.yml
+../../../envs/llada8b.yml
+../../../envs/llada2.1.yml
+```
+
+Create the BFCL backbone environments first:
+
+```bash
+conda env create -f ../../../envs/qwen3.yml
+conda env create -f ../../../envs/llada8b.yml
+```
+
 Portable Slurm template. This creates or updates two conda environments, matching
 the setup that has been used successfully on the current server:
 
