@@ -15,6 +15,14 @@ DEFAULT_BFCL_ROOT = Path(
     "berkeley-function-call-leaderboard"
 )
 
+# v3 whitelist JSON uses different keys and ID prefixes for some categories.
+# Maps v4 category name -> (v3 JSON key, v3 ID prefix, v4 ID prefix)
+WHITELIST_CATEGORY_MAP = {
+    "simple_python":    ("simple",     "simple_",     "simple_python_"),
+    "simple_java":      ("java",       "java_",       "simple_java_"),
+    "simple_javascript":("javascript", "javascript_", "simple_javascript_"),
+}
+
 
 def env_limit(name: str, default: Optional[int]) -> Optional[int]:
     value = os.getenv(name)
@@ -37,6 +45,12 @@ def env_ids(category: str) -> Optional[list[str]]:
     if not ids:
         raise ValueError(f"{env_name} must contain at least one comma-separated ID")
     return ids
+
+
+def load_whitelist(path: Path) -> dict[str, list[str]]:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 SUBSET_LIMITS = {
@@ -87,12 +101,26 @@ def main() -> int:
         default="all",
         help="Comma-separated BFCL categories to include in the subset ID file.",
     )
+    parser.add_argument(
+        "--whitelist",
+        default="test_case_ids_to_generate_v3.json",
+        help="Whitelist JSON file to use for ID selection (relative to bfcl-root).",
+    )
     args = parser.parse_args()
 
     bfcl_root = Path(args.bfcl_root).resolve()
     output = Path(args.output)
     if not output.is_absolute():
         output = bfcl_root / output
+
+    whitelist_path = Path(args.whitelist)
+    if not whitelist_path.is_absolute():
+        whitelist_path = bfcl_root / whitelist_path
+    whitelist = load_whitelist(whitelist_path)
+    if whitelist:
+        print(f"Loaded whitelist: {whitelist_path} ({len(whitelist)} categories)")
+    else:
+        print(f"No whitelist found at {whitelist_path}, falling back to ids[:limit]")
 
     selected_categories = parse_categories(args.categories)
     subset: dict[str, list[str]] = {}
@@ -101,23 +129,47 @@ def main() -> int:
     for category in selected_categories:
         limit = SUBSET_LIMITS[category]
         data_file = bfcl_root / "bfcl_eval" / "data" / f"BFCL_v4_{category}.json"
-        ids = read_ids(data_file)
+        all_ids = read_ids(data_file)
+        all_ids_set = set(all_ids)
+
+        # Priority: env var IDs > whitelist > ids[:limit]
         requested_ids = env_ids(category)
         if requested_ids is not None:
-            missing_ids = sorted(set(requested_ids) - set(ids))
+            missing_ids = sorted(set(requested_ids) - all_ids_set)
             if missing_ids:
                 raise ValueError(
                     f"Unknown IDs for {category}: {', '.join(missing_ids)}"
                 )
             selected = requested_ids
+            source = "env"
         else:
-            selected = ids if limit is None else ids[:limit]
+            mapping = WHITELIST_CATEGORY_MAP.get(category)
+            whitelist_key = mapping[0] if mapping else category
+            whitelist_ids = whitelist.get(whitelist_key)
+            if whitelist_ids is None:
+                raise ValueError(
+                    f"Category '{category}' (whitelist key: '{whitelist_key}') "
+                    f"not found in whitelist {whitelist_path}"
+                )
+            # Remap v3 ID prefixes to v4 if needed
+            if mapping:
+                _, old_prefix, new_prefix = mapping
+                whitelist_ids = [
+                    new_prefix + wid[len(old_prefix):]
+                    if wid.startswith(old_prefix) else wid
+                    for wid in whitelist_ids
+                ]
+            missing_ids = sorted(set(whitelist_ids) - all_ids_set)
+            if missing_ids:
+                raise ValueError(
+                    f"Whitelist IDs not found in data for {category}: {', '.join(missing_ids)}"
+                )
+            selected = whitelist_ids
+            source = "whitelist"
+
         subset[category] = selected
         total += len(selected)
-        limit_label = "ids" if requested_ids is not None else (
-            "all" if limit is None else str(limit)
-        )
-        print(f"  {category:24s} selected={len(selected):3d} limit={limit_label}")
+        print(f"  {category:24s} selected={len(selected):3d} source={source}")
 
     output.write_text(json.dumps(subset, indent=2) + "\n", encoding="utf-8")
     print(f"Total selected: {total}")

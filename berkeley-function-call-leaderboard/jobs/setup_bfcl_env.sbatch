@@ -9,22 +9,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BFCL_ROOT="${BFCL_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
-RESEARCH_ROOT="${RESEARCH_ROOT:-$(cd "${BFCL_ROOT}/../../../.." && pwd)}"
-FAST_DLLM_ROOT="${FAST_DLLM_ROOT:-${RESEARCH_ROOT}/Fast-dLLM}"
-QWEN_ENV_NAME="${QWEN_ENV_NAME:-qwen3}"
-LLADA_ENV_NAME="${LLADA_ENV_NAME:-llada8b}"
+source "${SCRIPT_DIR}/env.sh"
+
+FAST_DLLM_ROOT="${FAST_DLLM_ROOT:-$(cd "${BFCL_ROOT}/../../../../Fast-dLLM" && pwd)}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.12}"
 
 init_conda() {
-    if [[ -n "${CONDA_EXE:-}" ]]; then
+    if [[ -f "${CONDA_SH}" ]]; then
+        source "${CONDA_SH}"
+    elif [[ -n "${CONDA_EXE:-}" ]]; then
         eval "$("${CONDA_EXE}" shell.bash hook)"
-    elif [[ -f "${HOME}/miniconda3/etc/profile.d/conda.sh" ]]; then
-        source "${HOME}/miniconda3/etc/profile.d/conda.sh"
-    elif [[ -f "${HOME}/anaconda3/etc/profile.d/conda.sh" ]]; then
-        source "${HOME}/anaconda3/etc/profile.d/conda.sh"
     else
-        echo "ERROR: Could not find conda. Set CONDA_EXE or source conda before sbatch." >&2
+        echo "ERROR: Could not find conda. Set CONDA_SH in jobs/env.sh." >&2
         exit 1
     fi
 }
@@ -44,7 +40,15 @@ ensure_env "${QWEN_ENV_NAME}"
 conda activate "${QWEN_ENV_NAME}"
 python -m pip install --upgrade pip setuptools wheel
 python -m pip install -e ".[oss_eval_vllm]"
-python -m pip install "transformers>=4.51.0" soundfile
+python -m pip install --force-reinstall \
+    "torch==2.6.0" \
+    "torchvision==0.21.0" \
+    "torchaudio==2.6.0" \
+    "vllm==0.8.5" \
+    "transformers>=4.51.1,<5.0.0" \
+    "tokenizers>=0.21.1,<0.22.0" \
+    "numpy<2.3" \
+    soundfile sentencepiece protobuf safetensors
 python register_backbone.py
 
 ensure_env "${LLADA_ENV_NAME}"
@@ -56,7 +60,14 @@ if [[ -f "${FAST_DLLM_ROOT}/v1/requirements.txt" ]]; then
 else
     echo "WARNING: Fast-dLLM requirements not found at ${FAST_DLLM_ROOT}/v1/requirements.txt"
 fi
-python -m pip install soundfile
+python -m pip uninstall -y torch torchvision torchaudio || true
+python -m pip install "torch==${LLADA_TORCH_VERSION:-2.7.0+cu118}" \
+    --index-url "${LLADA_TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu118}"
+python -m pip install \
+    "transformers==4.49.0" \
+    "accelerate==0.34.2" \
+    "numpy==1.26.4" \
+    soundfile sentencepiece protobuf safetensors pyyaml docstring-parser loguru datasets rank-bm25
 python register_backbone.py
 
 echo "BFCL environments are ready."
