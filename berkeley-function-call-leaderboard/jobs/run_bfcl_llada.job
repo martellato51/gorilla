@@ -43,7 +43,8 @@ export BFCL_AST_DECODER="${BFCL_AST_DECODER:-legacy}"
 export BFCL_PROJECT_ROOT="$BFCL_ROOT"
 
 SUBSET_ID_SCRIPT="${SUBSET_ID_SCRIPT:-${BFCL_ROOT}/bfcl_eval/scripts/make_bfcl_subsets_ids.py}"
-TEST_CATEGORIES="${TEST_CATEGORIES:-multi_turn_base,multi_turn_miss_func,multi_turn_miss_param,multi_turn_long_context}"
+# TEST_CATEGORIES="${TEST_CATEGORIES:-multi_turn_base,multi_turn_miss_func,multi_turn_miss_param,multi_turn_long_context}"
+TEST_CATEGORIES="${TEST_CATEGORIES:-multi_turn_base}"
 NUM_THREADS="${NUM_THREADS:-1}"
 RUN_GENERATE="${RUN_GENERATE:-1}"
 RUN_EVAL="${RUN_EVAL:-1}"
@@ -75,7 +76,7 @@ echo "RESULT_DIR: $RESULT_DIR"
 echo "SCORE_DIR: $SCORE_DIR"
 echo "RUN_GENERATE: $RUN_GENERATE"
 echo "RUN_EVAL: $RUN_EVAL"
-echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-<unset>}"
+echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-1,2,3}"
 
 cd "$BFCL_ROOT"
 
