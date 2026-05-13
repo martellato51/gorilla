@@ -1,0 +1,139 @@
+#!/bin/bash
+#SBATCH --job-name=bfcl_llada
+#SBATCH --partition=jobs
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:2
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=/home/ilju/bfcl_llada.%j.log
+#SBATCH --error=/home/ilju/bfcl_llada.%j.log
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/env.sh"
+
+source "$CONDA_SH"
+conda activate "$LLADA_ENV_NAME"
+hash -r
+
+PYTHON="$LLADA_PYTHON"
+export TOKENIZERS_PARALLELISM=false
+export PYTHONUNBUFFERED=1
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+export LLADA_MODEL_PATH="${LLADA_MODEL_PATH}"
+export FAST_DLLM_LLADA_PATH="${FAST_DLLM_LLADA_PATH}"
+export LLADA_TEMPERATURE="${LLADA_TEMPERATURE:-0.0}"
+export LLADA_GEN_LENGTH="${LLADA_GEN_LENGTH:-128}"
+export LLADA_STEPS="${LLADA_STEPS:-128}"
+export LLADA_BLOCK_LENGTH="${LLADA_BLOCK_LENGTH:-32}"
+export LLADA_THRESHOLD="${LLADA_THRESHOLD:-0.9}"
+export LLADA_USE_CACHE="${LLADA_USE_CACHE:-0}"
+export LLADA_DUAL_CACHE="${LLADA_DUAL_CACHE:-0}"
+export LLADA_OOM_GEN_LENGTH="${LLADA_OOM_GEN_LENGTH:-64}"
+export LLADA_OOM_STEPS="${LLADA_OOM_STEPS:-64}"
+export LLADA_OOM_BLOCK_LENGTH="${LLADA_OOM_BLOCK_LENGTH:-32}"
+export LLADA_CONTEXT_LENGTH="${LLADA_CONTEXT_LENGTH:-4000}"
+export LLADA_ENFORCE_CONTEXT="${LLADA_ENFORCE_CONTEXT:-0}"
+export LLADA_TRUNCATE_INPUT="${LLADA_TRUNCATE_INPUT:-0}"
+export BFCL_FUNCTION_DOC_SERIALIZATION="${BFCL_FUNCTION_DOC_SERIALIZATION:-legacy}"
+export BFCL_AST_DECODER="${BFCL_AST_DECODER:-legacy}"
+export BFCL_PROJECT_ROOT="$BFCL_ROOT"
+
+SUBSET_ID_SCRIPT="${SUBSET_ID_SCRIPT:-${BFCL_ROOT}/bfcl_eval/scripts/make_bfcl_subsets_ids.py}"
+TEST_CATEGORIES="${TEST_CATEGORIES:-multi_turn_base,multi_turn_miss_func,multi_turn_miss_param,multi_turn_long_context}"
+NUM_THREADS="${NUM_THREADS:-1}"
+RUN_GENERATE="${RUN_GENERATE:-1}"
+RUN_EVAL="${RUN_EVAL:-1}"
+RUN_NAME="${RUN_NAME:-llada_mt_${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}"
+RESULT_DIR="${RESULT_DIR:-result/${RUN_NAME}}"
+SCORE_DIR="${SCORE_DIR:-score/${RUN_NAME}}"
+
+echo "Start: $(date)"
+echo "LLADA_MODEL_PATH: $LLADA_MODEL_PATH"
+echo "FAST_DLLM_LLADA_PATH: $FAST_DLLM_LLADA_PATH"
+echo "LLADA_TEMPERATURE: $LLADA_TEMPERATURE"
+echo "LLADA_GEN_LENGTH: $LLADA_GEN_LENGTH"
+echo "LLADA_STEPS: $LLADA_STEPS"
+echo "LLADA_BLOCK_LENGTH: $LLADA_BLOCK_LENGTH"
+echo "LLADA_THRESHOLD: $LLADA_THRESHOLD"
+echo "LLADA_USE_CACHE: $LLADA_USE_CACHE"
+echo "LLADA_DUAL_CACHE: $LLADA_DUAL_CACHE"
+echo "LLADA_OOM_GEN_LENGTH: $LLADA_OOM_GEN_LENGTH"
+echo "LLADA_OOM_STEPS: $LLADA_OOM_STEPS"
+echo "LLADA_OOM_BLOCK_LENGTH: $LLADA_OOM_BLOCK_LENGTH"
+echo "LLADA_CONTEXT_LENGTH: $LLADA_CONTEXT_LENGTH"
+echo "LLADA_ENFORCE_CONTEXT: $LLADA_ENFORCE_CONTEXT"
+echo "LLADA_TRUNCATE_INPUT: $LLADA_TRUNCATE_INPUT"
+echo "BFCL_FUNCTION_DOC_SERIALIZATION: $BFCL_FUNCTION_DOC_SERIALIZATION"
+echo "BFCL_AST_DECODER: $BFCL_AST_DECODER"
+echo "TEST_CATEGORIES: $TEST_CATEGORIES"
+echo "RUN_NAME: $RUN_NAME"
+echo "RESULT_DIR: $RESULT_DIR"
+echo "SCORE_DIR: $SCORE_DIR"
+echo "RUN_GENERATE: $RUN_GENERATE"
+echo "RUN_EVAL: $RUN_EVAL"
+echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-<unset>}"
+
+cd "$BFCL_ROOT"
+
+"$PYTHON" register_backbone.py
+"$PYTHON" "$SUBSET_ID_SCRIPT" \
+  --bfcl-root "$BFCL_ROOT" \
+  --categories "$TEST_CATEGORIES"
+
+"$PYTHON" - <<'PY'
+import json
+from pathlib import Path
+
+path = Path("test_case_ids_to_generate.json")
+data = json.loads(path.read_text())
+print("Resolved BFCL subset IDs:")
+for category, ids in data.items():
+    print(f"  {category}: {len(ids)}")
+print(f"  total: {sum(len(ids) for ids in data.values())}")
+PY
+
+EVAL_TEST_CATEGORIES="$("$PYTHON" - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path("test_case_ids_to_generate.json").read_text())
+print(",".join(category for category, ids in data.items() if ids))
+PY
+)"
+echo "EVAL_TEST_CATEGORIES: $EVAL_TEST_CATEGORIES"
+
+if [[ "$RUN_GENERATE" == "1" ]]; then
+  ALLOW_OVERWRITE="${ALLOW_OVERWRITE:-0}"
+  GENERATE_EXTRA_ARGS=""
+  [[ "$ALLOW_OVERWRITE" == "1" ]] && GENERATE_EXTRA_ARGS="--allow-overwrite"
+
+  "$PYTHON" -m bfcl_eval generate \
+    --model backbone/llada \
+    --test-category "$EVAL_TEST_CATEGORIES" \
+    --result-dir "$RESULT_DIR" \
+    --num-threads "$NUM_THREADS" \
+    --run-ids \
+    $GENERATE_EXTRA_ARGS
+else
+  echo "Skipping generate because RUN_GENERATE=$RUN_GENERATE"
+fi
+
+if [[ "$RUN_EVAL" == "1" ]]; then
+  "$PYTHON" -m bfcl_eval evaluate \
+    --model backbone/llada \
+    --test-category "$EVAL_TEST_CATEGORIES" \
+    --result-dir "$RESULT_DIR" \
+    --score-dir "$SCORE_DIR"
+else
+  echo "Skipping evaluate because RUN_EVAL=$RUN_EVAL"
+fi
+
+echo "Done: $(date)"
+echo "Result directory: ${BFCL_ROOT}/${RESULT_DIR}"
+if [[ "$RUN_EVAL" == "1" ]]; then
+  echo "Score directory: ${BFCL_ROOT}/${SCORE_DIR}"
+fi

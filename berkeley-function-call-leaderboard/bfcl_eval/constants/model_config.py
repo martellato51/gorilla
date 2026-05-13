@@ -2037,7 +2037,11 @@ third_party_inference_model_map = {
 }
 
 
+# Backbone model configurations (pure AR / DLM, no Selector/Editor)
+from bfcl_eval.build_handlers_backbone import add_backbone_model_configs
+backbone_model_map = add_backbone_model_configs()
 MODEL_CONFIG_MAPPING = {
+    **backbone_model_map,
     **api_inference_model_map,
     **local_inference_model_map,
     **third_party_inference_model_map,

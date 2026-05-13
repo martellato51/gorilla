@@ -35,6 +35,22 @@ def get_handler(model_name):
     return handler
 
 
+def align_to_model_result_ids(model_result, *datasets):
+    """Filter prompt/answer datasets to the subset of ids present in model_result."""
+    result_ids = [entry["id"] for entry in model_result]
+    aligned_datasets = []
+    for dataset in datasets:
+        by_id = {entry["id"]: entry for entry in dataset}
+        missing_ids = [entry_id for entry_id in result_ids if entry_id not in by_id]
+        if missing_ids:
+            raise ValueError(
+                "Model result contains ids missing from evaluation data: "
+                + ", ".join(missing_ids)
+            )
+        aligned_datasets.append([by_id[entry_id] for entry_id in result_ids])
+    return aligned_datasets
+
+
 def multi_turn_runner(
     handler, model_result, prompt, possible_answer, model_name, test_category, score_dir
 ):
@@ -432,6 +448,8 @@ def evaluate_task(
     prompt = load_file(prompt_file, sort_by_id=True)
 
     if is_relevance_or_irrelevance(test_category):
+        if len(model_result) != len(prompt):
+            (prompt,) = align_to_model_result_ids(model_result, prompt)
         accuracy, total_count = relevance_file_runner(
             handler, model_result, prompt, model_name, test_category, score_dir
         )
@@ -440,6 +458,10 @@ def evaluate_task(
         # Find the corresponding possible answer file
         possible_answer_file = find_file_with_suffix(POSSIBLE_ANSWER_PATH, test_category)
         possible_answer = load_file(possible_answer_file, sort_by_id=True)
+        if len(model_result) != len(prompt) or len(model_result) != len(possible_answer):
+            prompt, possible_answer = align_to_model_result_ids(
+                model_result, prompt, possible_answer
+            )
 
         if is_multi_turn(test_category):
             accuracy, total_count = multi_turn_runner(

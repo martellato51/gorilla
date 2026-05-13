@@ -3,6 +3,7 @@ import builtins
 import copy
 import json
 import operator
+import os
 import re
 from functools import reduce
 from typing import Callable, List, Optional, Type, Union
@@ -240,7 +241,16 @@ def convert_value(value, type_str):
 
 def ast_parse(input_str: str, language: str="Python") -> list[dict]:
     if language == "Python":
-        cleaned_input = input_str.strip("[]'")
+        ast_decoder = os.getenv("BFCL_AST_DECODER", "legacy").lower()
+        if ast_decoder == "legacy":
+            cleaned_input = input_str.strip("[]'")
+        elif ast_decoder == "v4":
+            cleaned_input = input_str.strip().strip("'")
+        else:
+            raise ValueError(
+                "Unsupported BFCL_AST_DECODER="
+                f"{ast_decoder!r}; expected 'legacy' or 'v4'"
+            )
         parsed = ast.parse(cleaned_input, mode="eval")
         extracted = []
         if isinstance(parsed.body, ast.Call):
@@ -332,7 +342,19 @@ def system_prompt_pre_processing_chat_model(prompts, function_docs, test_categor
 
     system_prompt_template = DEFAULT_SYSTEM_PROMPT
 
-    system_prompt = system_prompt_template.format(functions=function_docs)
+    function_doc_serialization = os.getenv(
+        "BFCL_FUNCTION_DOC_SERIALIZATION", "legacy"
+    ).lower()
+    if function_doc_serialization == "legacy":
+        formatted_function_docs = function_docs
+    elif function_doc_serialization == "json":
+        formatted_function_docs = json.dumps(function_docs, indent=4)
+    else:
+        raise ValueError(
+            "Unsupported BFCL_FUNCTION_DOC_SERIALIZATION="
+            f"{function_doc_serialization!r}; expected 'legacy' or 'json'"
+        )
+    system_prompt = system_prompt_template.format(functions=formatted_function_docs)
 
     # System prompt must be in the first position
     # If the question comes with a system prompt, append its content at the end of the chat template.
