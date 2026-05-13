@@ -13,7 +13,7 @@
 #   8. CUDA_VISIBLE_DEVICES  — GPUs to use (e.g. "0,1" or "1,2,3")
 
 # --- Paths ---
-export BFCL_PROJECT_ROOT="${BFCL_PROJECT_ROOT:-/home/ilju/research/bfcl_v3_ea13468/berkeley-function-call-leaderboard}"
+export BFCL_PROJECT_ROOT="${BFCL_PROJECT_ROOT:-/home/ilju/research/DiffuAgent/unified_envs/gorilla_bfcl_v3/berkeley-function-call-leaderboard}"
 export BFCL_ROOT="${BFCL_ROOT:-${BFCL_PROJECT_ROOT}}"
 export BFCL_PROJECT_ROOT="$BFCL_ROOT"
 export RESEARCH_ROOT="${RESEARCH_ROOT:-/home/ilju/research}"
