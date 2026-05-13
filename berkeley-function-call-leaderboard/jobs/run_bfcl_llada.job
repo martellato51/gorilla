@@ -28,8 +28,8 @@ export FAST_DLLM_LLADA_PATH="${FAST_DLLM_LLADA_PATH}"
 export LLADA_TEMPERATURE="${LLADA_TEMPERATURE:-0.0}"
 export LLADA_GEN_LENGTH="${LLADA_GEN_LENGTH:-128}"
 export LLADA_STEPS="${LLADA_STEPS:-128}"
-export LLADA_BLOCK_LENGTH="${LLADA_BLOCK_LENGTH:-128}"
-export LLADA_THRESHOLD="${LLADA_THRESHOLD:-null}"
+export LLADA_BLOCK_LENGTH="${LLADA_BLOCK_LENGTH:-32}"
+export LLADA_THRESHOLD="${LLADA_THRESHOLD:-0.9}"
 export LLADA_USE_CACHE="${LLADA_USE_CACHE:-0}"
 export LLADA_DUAL_CACHE="${LLADA_DUAL_CACHE:-0}"
 export LLADA_OOM_GEN_LENGTH="${LLADA_OOM_GEN_LENGTH:-64}"
@@ -49,8 +49,8 @@ TEST_CATEGORIES="${TEST_CATEGORIES:-multi_turn_base}"
 NUM_THREADS="${NUM_THREADS:-1}"
 RUN_EVAL="${RUN_EVAL:-1}"
 RUN_NAME="${RUN_NAME:-llada_mt_${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}"
-RESULT_DIR="${RESULT_DIR:-result_runs/${RUN_NAME}}"
-SCORE_DIR="${SCORE_DIR:-subset_runs/${RUN_NAME}}"
+RESULT_DIR="${RESULT_DIR:-result/${RUN_NAME}}"
+SCORE_DIR="${SCORE_DIR:-score/${RUN_NAME}}"
 
 echo "Start: $(date)"
 echo "LLADA_MODEL_PATH: $LLADA_MODEL_PATH"
@@ -98,12 +98,17 @@ for category, ids in data.items():
 print(f"  total: {sum(len(ids) for ids in data.values())}")
 PY
 
+ALLOW_OVERWRITE="${ALLOW_OVERWRITE:-0}"
+GENERATE_EXTRA_ARGS=""
+[[ "$ALLOW_OVERWRITE" == "1" ]] && GENERATE_EXTRA_ARGS="--allow-overwrite"
+
 "$PYTHON" -m bfcl_eval generate \
   --model backbone/llada \
   --test-category "$TEST_CATEGORIES" \
   --result-dir "$RESULT_DIR" \
   --num-threads "$NUM_THREADS" \
-  --run-ids
+  --run-ids \
+  $GENERATE_EXTRA_ARGS
 
 if [[ "$RUN_EVAL" == "1" ]]; then
   "$PYTHON" -m bfcl_eval evaluate \

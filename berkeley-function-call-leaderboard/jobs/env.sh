@@ -28,5 +28,9 @@ export CONDA_SH="${CONDA_SH:-/home/ilju/miniconda3/etc/profile.d/conda.sh}"
 export MAIN_AGENT_MODEL_PATH="${MAIN_AGENT_MODEL_PATH:-/data/ilju/Qwen3-8B}"
 export LLADA_MODEL_PATH="${LLADA_MODEL_PATH:-/data/ilju/LLaDA-8B-Instruct}"
 
+# Match the original DiffuAgent REQUEST_DLLM LLaDA defaults.
+export LLADA_BLOCK_LENGTH="${LLADA_BLOCK_LENGTH:-32}"
+export LLADA_THRESHOLD="${LLADA_THRESHOLD:-0.9}"
+
 # --- GPU ---
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-1,2,3}"

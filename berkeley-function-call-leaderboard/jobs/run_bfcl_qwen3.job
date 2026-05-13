@@ -44,8 +44,8 @@ SUBSET_ID_SCRIPT="${SUBSET_ID_SCRIPT:-${BFCL_ROOT}/bfcl_eval/scripts/make_bfcl_s
 TEST_CATEGORIES="${TEST_CATEGORIES:-multi_turn_base}"
 NUM_THREADS="${NUM_THREADS:-1}"
 RUN_NAME="${RUN_NAME:-qwen3_mt_${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}"
-RESULT_DIR="${RESULT_DIR:-result_runs/${RUN_NAME}}"
-SCORE_DIR="${SCORE_DIR:-subset_runs/${RUN_NAME}}"
+RESULT_DIR="${RESULT_DIR:-result/${RUN_NAME}}"
+SCORE_DIR="${SCORE_DIR:-score/${RUN_NAME}}"
 
 echo "Start: $(date)"
 echo "PYTHON: $PYTHON"

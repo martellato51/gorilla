@@ -66,7 +66,7 @@ class LocalDLLMBackend:
         self.oom_block_length = int(os.getenv("LLADA_OOM_BLOCK_LENGTH", "32"))
         self.remasking = remasking
         self.temperature = float(os.getenv("LLADA_TEMPERATURE", "0.0"))
-        self.threshold = self._optional_float(os.getenv("LLADA_THRESHOLD", "null"))
+        self.threshold = self._optional_float(os.getenv("LLADA_THRESHOLD", "0.9"))
         self.use_cache = os.getenv("LLADA_USE_CACHE", "0") == "1"
         self.dual_cache = os.getenv("LLADA_DUAL_CACHE", "0") == "1"
         self.context_length = int(os.getenv("LLADA_CONTEXT_LENGTH", "4000"))
