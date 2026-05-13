@@ -505,13 +505,42 @@ class LocalDLLMHandler(BackbonePromptingHandler):
         if not hasattr(config, "train_max_sequence_length"):
             config.train_max_sequence_length = config.max_sequence_length
 
+        device_map = os.getenv("LLADA_DEVICE_MAP", "auto")
+        max_memory = None
+        max_memory_env = os.getenv("LLADA_MAX_MEMORY", "").strip()
+        if max_memory_env:
+            max_memory = {}
+            for item in max_memory_env.split(","):
+                key, value = item.split(":", 1)
+                key = key.strip()
+                max_memory[int(key) if key.isdigit() else key] = value.strip()
+            print(f"  LLaDA device_map={device_map}, max_memory={max_memory}")
+
         model = LLaDAModelLM.from_pretrained(
             self._llada_model_path,
             trust_remote_code=True,
             config=config,
             torch_dtype=torch_dtype,
-            device_map="auto",
+            device_map=device_map,
+            max_memory=max_memory,
         ).eval()
+        hf_device_map = getattr(model, "hf_device_map", None)
+        if hf_device_map:
+            print(f"  LLaDA hf_device_map={hf_device_map}")
+        param_bytes_by_device = {}
+        for parameter in model.parameters():
+            device = str(parameter.device)
+            param_bytes_by_device[device] = (
+                param_bytes_by_device.get(device, 0)
+                + parameter.numel() * parameter.element_size()
+            )
+        print(
+            "  LLaDA parameter bytes by device="
+            + ", ".join(
+                f"{device}:{num_bytes / (1024 ** 3):.2f}GiB"
+                for device, num_bytes in sorted(param_bytes_by_device.items())
+            )
+        )
 
         tokenizer = AutoTokenizer.from_pretrained(
             self._llada_model_path, trust_remote_code=True
