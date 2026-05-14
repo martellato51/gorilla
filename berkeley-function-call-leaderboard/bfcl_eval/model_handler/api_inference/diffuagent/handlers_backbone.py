@@ -945,12 +945,38 @@ class LocalLLaDA21ToolsHandler(LocalLLaDA21Handler):
         matches = re.findall(
             r"<tool_call>\s*(.*?)\s*</tool_call>", input_string, re.DOTALL
         )
+        if not matches:
+            matches = LocalLLaDA21ToolsHandler._extract_bare_json_objects(input_string)
+
         tool_calls = []
         for match in matches:
             try:
-                parsed = json.loads(match)
+                parsed = json.loads(match) if isinstance(match, str) else match
             except Exception:
                 continue
             if isinstance(parsed, dict):
                 tool_calls.append(parsed)
         return tool_calls
+
+    @staticmethod
+    def _extract_bare_json_objects(input_string):
+        decoder = json.JSONDecoder()
+        objects = []
+        index = 0
+        length = len(input_string)
+
+        while index < length:
+            object_start = input_string.find("{", index)
+            if object_start == -1:
+                break
+
+            try:
+                parsed, end = decoder.raw_decode(input_string, object_start)
+            except Exception:
+                index = object_start + 1
+                continue
+
+            objects.append(parsed)
+            index = end
+
+        return objects
