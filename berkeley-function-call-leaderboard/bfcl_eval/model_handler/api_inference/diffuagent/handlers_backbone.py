@@ -49,6 +49,11 @@ _LLADA_THINK_DIAGNOSTIC_INSTRUCTION = (
     "format, with no extra prose."
 )
 
+_LLADA21_NATIVE_TOOLS_EXACT_NAME_INSTRUCTION = (
+    "Use only function names exactly as written in <tools>. "
+    "Do not invent, shorten, rename, or translate function names."
+)
+
 
 class BackbonePromptingHandler(BaseHandler):
     """BFCL v3-compatible prompting handler for DiffuAgent backbone evals."""
@@ -881,7 +886,16 @@ class LocalLLaDA21ToolsHandler(LocalLLaDA21Handler):
         # Native tool mode lets LLaDA2.1's chat template inject <tools> and
         # <tool_call> instructions. Avoid also adding BFCL's legacy
         # [func(...)] system prompt, since the two output contracts conflict.
-        return {"message": [], "function": functions}
+        messages = []
+        if os.getenv("LLADA21_NATIVE_TOOLS_EXACT_NAME_INSTRUCTION", "0") == "1":
+            messages.append(
+                {
+                    "role": "system",
+                    "content": _LLADA21_NATIVE_TOOLS_EXACT_NAME_INSTRUCTION,
+                }
+            )
+
+        return {"message": messages, "function": functions}
 
     @override
     def _query_prompting(self, inference_data: dict):
