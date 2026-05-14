@@ -2,13 +2,17 @@
 Backbone model configuration builder.
 
 Registers pure backbone handlers (no Selector/Editor):
-  backbone/qwen3-8b  → LLMHandler        (AR via vLLM)
-  backbone/llada     → LocalDLLMHandler  (DLM in-process)
+  backbone/qwen3-8b  -> LLMHandler        (AR via vLLM)
+  backbone/llada     -> LocalDLLMHandler  (DLM in-process)
+  backbone/llada2.1-mini -> LocalLLaDA21Handler (DLM in-process)
 """
 
 from bfcl_eval.constants.model_config import ModelConfig
 from bfcl_eval.model_handler.api_inference.diffuagent.handlers import LLMHandler
-from bfcl_eval.model_handler.api_inference.diffuagent.handlers_backbone import LocalDLLMHandler
+from bfcl_eval.model_handler.api_inference.diffuagent.handlers_backbone import (
+    LocalDLLMHandler,
+    LocalLLaDA21Handler,
+)
 
 
 def _build_config(config_name: str, url: str, model_handler) -> ModelConfig:
@@ -37,6 +41,11 @@ def add_backbone_model_configs() -> dict:
             config_name="backbone/llada",
             url="https://huggingface.co/GSAI-ML/LLaDA-8B-Instruct",
             model_handler=LocalDLLMHandler,
+        ),
+        "backbone/llada2.1-mini": _build_config(
+            config_name="backbone/llada2.1-mini",
+            url="https://huggingface.co/inclusionAI/LLaDA2.1-mini",
+            model_handler=LocalLLaDA21Handler,
         ),
     }
     print(f"Generated {len(configs)} backbone configurations")
