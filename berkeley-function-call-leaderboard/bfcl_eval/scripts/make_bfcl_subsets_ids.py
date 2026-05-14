@@ -64,7 +64,6 @@ SUBSET_LIMITS = {
     "multi_turn_long_context": env_limit("BFCL_MULTI_TURN_LONG_CONTEXT_LIMIT", 10),
 }
 
-
 def parse_categories(raw_categories: str) -> list[str]:
     if not raw_categories or raw_categories == "all":
         return list(SUBSET_LIMITS.keys())

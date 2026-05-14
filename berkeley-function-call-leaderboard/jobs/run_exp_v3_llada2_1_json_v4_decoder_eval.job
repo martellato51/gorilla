@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH --job-name=bfcl_v3_llada21_json_v4dec
+#SBATCH --partition=jobs
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=02:00:00
+#SBATCH --output=/home/ilju/bfcl_v3_llada21_json_v4dec.%j.log
+#SBATCH --error=/home/ilju/bfcl_v3_llada21_json_v4dec.%j.log
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -z "${RESULT_DIR:-}" ]]; then
+  if [[ -z "${SOURCE_RUN_NAME:-}" ]]; then
+    echo "Set RESULT_DIR=result/<llada21_v3_json_run> or SOURCE_RUN_NAME=<llada21_v3_json_run>." >&2
+    exit 1
+  fi
+  export RESULT_DIR="result/${SOURCE_RUN_NAME}"
+fi
+
+if [[ -z "${SCORE_DIR:-}" ]]; then
+  if [[ -n "${SOURCE_RUN_NAME:-}" ]]; then
+    export SCORE_DIR="score/${SOURCE_RUN_NAME}_v4_decoder"
+  else
+    export SCORE_DIR="${RESULT_DIR/result/score}_v4_decoder"
+  fi
+fi
+
+export BFCL_FUNCTION_DOC_SERIALIZATION=json
+export BFCL_AST_DECODER=v4
+export TEST_CATEGORIES="${TEST_CATEGORIES:-simple,multiple,parallel,parallel_multiple,java,javascript,live_simple,live_multiple,live_parallel,live_parallel_multiple}"
+export RUN_GENERATE=0
+export RUN_EVAL=1
+
+exec bash "${SCRIPT_DIR}/run_bfcl_llada2_1.job"

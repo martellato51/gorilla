@@ -3,6 +3,13 @@
 from bfcl_eval.model_handler.api_inference.diffuagent.handlers_backbone import (
     LLMHandler,
     LocalDLLMHandler,
+    LocalLLaDA21Handler,
+    LocalLLaDA21ToolsHandler,
 )
 
-__all__ = ["LLMHandler", "LocalDLLMHandler"]
+__all__ = [
+    "LLMHandler",
+    "LocalDLLMHandler",
+    "LocalLLaDA21Handler",
+    "LocalLLaDA21ToolsHandler",
+]
